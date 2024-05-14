@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather</title>
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+
+<body>
+    <div class="body_wrapping">
+        <div class="header">
+            <h1>現在地</h1>
+            <h3><span id="area"></span></h3>
+            <h3><span id="location_temp"></span> ｜ <span id="location_description"></span></h3>
+        </div>
+        <div class="contents">
+            <div id="buttons"></div>
+            <div id="view"></div>
+            <div id="myMap"></div>
+        </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+    <script src="key.js"></script><!-- apikey読み込み -->
+    <script src="https://cdn.jsdelivr.net/gh/yamazakidaisuke/BmapQuery/js/BmapQuery.js"></script>
+    <script>
+        const key = key2.apiKey;
+        const icon = "http://openweathermap.org/img/wn/";
+        console.log(key1);
+
+        //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+        //OpenWeatherAPI（天気情報を取得）5DAY/3hour
+        //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+        function initWeatherAndMap(latitude, longitude) {
+            const weatherurl = 'https://api.openweathermap.org/data/2.5/forecast?lat=' + latitude + '&lon=' + longitude + '&appid=' + key + '&lang=ja';
+            $.ajax({
+                url: weatherurl,
+                type: 'get',
+                cache: false,
+                dataType: 'json'
+            }).done(function (data) {
+                console.log(data);
+                const forecasts = {};
+                data.list.forEach((item) => {
+                    const date = item.dt_txt.split(' ')[0];2
+                    if (!forecasts[date]) {
+                        forecasts[date] = [];
+                    }
+                    forecasts[date].push(item);
+                });
+
+                $("#buttons").empty();
+                Object.keys(forecasts).forEach((date, index) => {
+                    const button = $('<button>').text(date).on('click', function () {
+                        displayWeather(forecasts[date]);
+                    });
+                    $("#buttons").append(button);
+                });
+
+                $("#area").html(data.city.name);
+                $("#location_temp").html(Math.trunc(data.list[0].main.temp - 273.15) + ' ℃'); // 気温の表示（ケルビンから摂氏への変換）
+                $("#location_description").html(data.list[0].weather[0].description); // 天気の説明の表示
+                displayWeather(forecasts[Object.keys(forecasts)[0]]);
+            });
+
+            const map = new Bmap("#myMap");
+            map.startMap(latitude, longitude, "load", 16);
+            map.pin(latitude, longitude, "#37AB9D");
+        }
+
+        function displayWeather(forecast) {
+            $("#view").empty();
+            forecast.forEach((weather) => {
+                const html = `
+                    <div>
+                        <div>時刻：${weather.dt_txt}</div>
+                        <div>気温：${Math.trunc(weather.main.temp - 273.15)} ℃</div>
+                        <div>湿度：${weather.main.humidity} %</div>
+                        <div>天気：${weather.weather[0].description}</div>
+                        <div><img src="${icon + weather.weather[0].icon}@2x.png"></div>
+                    </div>
+                `;
+                $("#view").append(html);
+            });
+        }
+
+        function GetMap() {
+            const map = new Bmap("#myMap");
+            map.geolocation(function (data) {
+                const lat = data.coords.latitude;
+                const lon = data.coords.longitude;
+                map.startMap(lat, lon, "load", 16);
+                map.pin(lat, lon);
+                initWeatherAndMap(lat, lon); // 天気情報と地図の初期化
+            });
+        }
+    </script>
+</body>
+
+</html>
